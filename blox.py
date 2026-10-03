@@ -117,6 +117,7 @@ class Board:
         self.grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
         self.corner_positions = [(0, 0), (0, GRID_SIZE - 1), (GRID_SIZE - 1, 0), (GRID_SIZE - 1, GRID_SIZE - 1)]
         self.is_first_move = True
+        self.skipped_turns = 0
 
     def draw(self, screen):
         for r in range(GRID_SIZE):
@@ -171,6 +172,12 @@ class Board:
         self.is_first_move = False
         return True
 
+    def skip_turn(self):
+        """ターンをスキップ"""
+        self.is_first_move = False
+        self.skipped_turns += 1
+        return True
+
     def get_score(self):
         return sum(cell for row in self.grid for cell in row)
 
@@ -196,7 +203,7 @@ def main():
     running = True
     offset_x = 0
     offset_y = 0
-    message = "R: rotate  F: flip  SPACE: next"
+    message = "R: rotate  F: flip  SPACE: next  S: skip"
 
     while running:
         screen.fill(BG_COLOR)
@@ -218,6 +225,13 @@ def main():
                     current_block.x = SCREEN_WIDTH - 220
                     current_block.y = 120
                     message = "Next block"
+                elif event.key == pygame.K_s:
+                    board.skip_turn()
+                    current_block_idx = (current_block_idx + 1) % len(ALL_BLOCKS)
+                    current_block = Block(ALL_BLOCKS[current_block_idx], current_block_idx)
+                    current_block.x = SCREEN_WIDTH - 220
+                    current_block.y = 120
+                    message = "Turn skipped!"
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     block_width, block_height = get_shape_bounds(current_block.shape)
@@ -260,7 +274,8 @@ def main():
 
         draw_text(screen, "Territory Game", 10, 10, 30)
         draw_text(screen, f"Score: {board.get_score()}", 10, 50, 24)
-        draw_text(screen, "First move must touch a corner" if board.is_first_move else "Normal placement", 10, 80, 18)
+        draw_text(screen, f"Skipped: {board.skipped_turns}", 10, 80, 18)
+        draw_text(screen, "First move must touch a corner" if board.is_first_move else "Normal placement", 10, 110, 18)
         draw_text(screen, message, 10, SCREEN_HEIGHT - 40, 18)
 
         pygame.display.flip()
