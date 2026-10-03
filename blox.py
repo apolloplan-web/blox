@@ -176,7 +176,6 @@ class Board:
 
 
 def draw_text(screen, text, x, y, font_size=24, color=TEXT_COLOR):
-    pygame.font.init()
     font = pygame.font.Font(None, font_size)
     surface = font.render(text, True, color)
     screen.blit(surface, (x, y))
