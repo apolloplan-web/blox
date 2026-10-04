@@ -14,6 +14,8 @@ TEXT_COLOR = (0, 0, 0)
 VALID_COLOR = (144, 238, 144)
 INVALID_COLOR = (255, 100, 100)
 UI_BG_COLOR = (220, 220, 220)
+BUTTON_COLOR = (180, 180, 180)
+BUTTON_HOVER_COLOR = (150, 150, 150)
 
 # プレーヤーカラー
 PLAYER_COLORS = [
@@ -47,6 +49,32 @@ ALL_BLOCKS = [
     [[1, 0, 0], [1, 1, 1], [0, 1, 0]],
     [[1, 0, 0], [1, 1, 1], [1, 0, 0]],
 ]
+
+
+class Button:
+    def __init__(self, x, y, width, height, label, callback):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.label = label
+        self.callback = callback
+        self.is_hovered = False
+
+    def draw(self, screen):
+        color = BUTTON_HOVER_COLOR if self.is_hovered else BUTTON_COLOR
+        pygame.draw.rect(screen, color, self.rect)
+        pygame.draw.rect(screen, TEXT_COLOR, self.rect, 2)
+        font = pygame.font.Font(None, 18)
+        text_surface = font.render(self.label, True, TEXT_COLOR)
+        text_rect = text_surface.get_rect(center=self.rect.center)
+        screen.blit(text_surface, text_rect)
+
+    def check_hover(self, mouse_pos):
+        self.is_hovered = self.rect.collidepoint(mouse_pos)
+
+    def check_click(self, mouse_pos):
+        if self.rect.collidepoint(mouse_pos):
+            self.callback()
+            return True
+        return False
 
 
 def rotate_shape(shape):
@@ -133,7 +161,6 @@ class Board:
         self.player_scores = [0, 0, 0, 0]
         self.player_first_move = [True, True, True, True]
         self.player_skipped = [0, 0, 0, 0]
-        # 各プレーヤーが使用可能なブロック（21個ずつ）
         self.player_available_blocks = [[True] * 21 for _ in range(4)]
 
     def draw(self, screen):
@@ -153,7 +180,6 @@ class Board:
                 pygame.draw.rect(screen, GRID_COLOR, (x, y, CELL_SIZE, CELL_SIZE), 1)
 
     def is_touching_corner(self, block, player_id):
-        """指定プレーヤーのコーナーに触れているか"""
         grid_x = round((block.x - BOARD_OFFSET_X) / CELL_SIZE)
         grid_y = round((block.y - BOARD_OFFSET_Y) / CELL_SIZE)
 
@@ -166,11 +192,9 @@ class Board:
         return False
 
     def can_place(self, block, player_id):
-        """ブロックを置けるか確認"""
         grid_x = round((block.x - BOARD_OFFSET_X) / CELL_SIZE)
         grid_y = round((block.y - BOARD_OFFSET_Y) / CELL_SIZE)
 
-        # グリッド範囲外チェック
         for r_idx, c_idx in block.get_cells():
             target_r = grid_y + r_idx
             target_c = grid_x + c_idx
@@ -179,7 +203,6 @@ class Board:
             if self.grid[target_r][target_c] != 0:
                 return False
 
-        # 最初の手の場合はコーナー要件チェック
         if self.player_first_move[player_id]:
             if not self.is_touching_corner(block, player_id):
                 return False
@@ -187,7 +210,6 @@ class Board:
         return True
 
     def place_block(self, block, player_id):
-        """ブロックを配置"""
         if not self.can_place(block, player_id):
             return False
 
@@ -203,25 +225,20 @@ class Board:
 
         self.player_scores[player_id] += placed
         self.player_first_move[player_id] = False
-        # ブロックを使用済みにマーク
         self.player_available_blocks[player_id][block.block_id] = False
         return True
 
     def skip_turn(self, player_id):
-        """ターンをスキップ"""
         self.player_first_move[player_id] = False
         self.player_skipped[player_id] += 1
 
     def next_player(self):
-        """次のプレーヤーにターンを移す"""
         self.current_player = (self.current_player + 1) % 4
 
     def get_player_name(self):
-        """現在のプレーヤー名"""
         return f"Player {self.current_player + 1}"
 
     def get_available_block_count(self, player_id):
-        """プレーヤーが使用可能なブロック数"""
         return sum(self.player_available_blocks[player_id])
 
 
@@ -232,11 +249,10 @@ def draw_text(screen, text, x, y, font_size=24, color=TEXT_COLOR):
 
 
 def draw_block_palette(screen, board, current_player_id):
-    """プレーヤーの使用可能なブロックを右側のパレットに表示"""
+    """1列で全ブロックを表示"""
     palette_x = 750
     palette_y = 50
     
-    # パレット背景
     pygame.draw.rect(screen, UI_BG_COLOR, (palette_x - 20, palette_y - 20, 830, 850))
     pygame.draw.rect(screen, TEXT_COLOR, (palette_x - 20, palette_y - 20, 830, 850), 2)
     
@@ -244,32 +260,29 @@ def draw_block_palette(screen, board, current_player_id):
               palette_x, palette_y, 20, PLAYER_COLORS[current_player_id])
     
     cell_size = 35
-    cols_per_row = 5
-    start_y = palette_y + 30
+    start_y = palette_y + 35
     
-    for block_idx in range(21):
-        if not board.player_available_blocks[current_player_id][block_idx]:
+    block_idx = 0
+    for idx in range(21):
+        if not board.player_available_blocks[current_player_id][idx]:
             continue
-            
-        row = block_idx // cols_per_row
-        col = block_idx % cols_per_row
         
-        x = palette_x + col * (cell_size + 5)
-        y = start_y + row * (cell_size + 5)
+        x = palette_x + 10
+        y = start_y + block_idx * (cell_size + 8)
         
-        # ブロックID表示
-        draw_text(screen, str(block_idx), x, y - 20, 14)
+        draw_text(screen, f"Block {idx}", x, y, 14, TEXT_COLOR)
         
-        # ブロック図形描画
-        block_shape = ALL_BLOCKS[block_idx]
+        block_shape = ALL_BLOCKS[idx]
         for r_idx, row_data in enumerate(block_shape):
             for c_idx, cell in enumerate(row_data):
                 if cell:
                     pygame.draw.rect(
                         screen,
                         PLAYER_COLORS[current_player_id],
-                        (x + c_idx * 7, y + r_idx * 7, 6, 6)
+                        (x + 80 + c_idx * 12, y + 5 + r_idx * 12, 10, 10)
                     )
+        
+        block_idx += 1
 
 
 def main():
@@ -288,72 +301,92 @@ def main():
     offset_x = 0
     offset_y = 0
     message = ""
-    selected_block_id = None
+
+    def rotate_action():
+        nonlocal message
+        current_block.rotate()
+        message = "Rotated"
+
+    def flip_action():
+        nonlocal message
+        current_block.flip()
+        message = "Flipped"
+
+    def next_block_action():
+        nonlocal current_block_idx, current_block, message
+        for i in range(21):
+            next_idx = (current_block_idx + 1 + i) % 21
+            if board.player_available_blocks[board.current_player][next_idx]:
+                current_block_idx = next_idx
+                break
+        current_block = Block(ALL_BLOCKS[current_block_idx], current_block_idx, board.current_player)
+        current_block.x = 100
+        current_block.y = 750
+        message = "Next block"
+
+    def skip_action():
+        nonlocal current_block_idx, current_block, message
+        board.skip_turn(board.current_player)
+        board.next_player()
+        for i in range(21):
+            if board.player_available_blocks[board.current_player][i]:
+                current_block_idx = i
+                break
+        current_block = Block(ALL_BLOCKS[current_block_idx], current_block_idx, board.current_player)
+        current_block.x = 100
+        current_block.y = 750
+        message = f"{board.get_player_name()} - Turn skipped"
+
+    # ボタン配置
+    buttons = [
+        Button(10, 700, 80, 40, "Rotate (R)", rotate_action),
+        Button(100, 700, 80, 40, "Flip (F)", flip_action),
+        Button(190, 700, 80, 40, "Next (SPACE)", next_block_action),
+        Button(280, 700, 80, 40, "Skip (S)", skip_action),
+    ]
 
     while running:
         screen.fill(BG_COLOR)
         mouse_x, mouse_y = pygame.mouse.get_pos()
+
+        # ボタンのホバー状態更新
+        for button in buttons:
+            button.check_hover((mouse_x, mouse_y))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    current_block.rotate()
-                    message = "Rotated"
+                    rotate_action()
                 elif event.key == pygame.K_f:
-                    current_block.flip()
-                    message = "Flipped"
+                    flip_action()
                 elif event.key == pygame.K_SPACE:
-                    # 次の使用可能なブロックを探す
-                    for i in range(21):
-                        next_idx = (current_block_idx + 1 + i) % 21
-                        if board.player_available_blocks[board.current_player][next_idx]:
-                            current_block_idx = next_idx
-                            break
-                    current_block = Block(ALL_BLOCKS[current_block_idx], current_block_idx, board.current_player)
-                    current_block.x = 100
-                    current_block.y = 750
-                    message = "Next block"
+                    next_block_action()
                 elif event.key == pygame.K_s:
-                    board.skip_turn(board.current_player)
-                    board.next_player()
-                    # 次のプレーヤーの最初の使用可能ブロックに切り替え
-                    for i in range(21):
-                        if board.player_available_blocks[board.current_player][i]:
-                            current_block_idx = i
-                            break
-                    current_block = Block(ALL_BLOCKS[current_block_idx], current_block_idx, board.current_player)
-                    current_block.x = 100
-                    current_block.y = 750
-                    message = f"{board.get_player_name()} - Turn skipped"
-                elif event.key == pygame.K_1:
-                    # ブロック1を選択
-                    if board.player_available_blocks[board.current_player][0]:
-                        current_block_idx = 0
-                        current_block = Block(ALL_BLOCKS[0], 0, board.current_player)
-                        current_block.x = 100
-                        current_block.y = 750
-                elif event.key == pygame.K_2:
-                    if board.player_available_blocks[board.current_player][1]:
-                        current_block_idx = 1
-                        current_block = Block(ALL_BLOCKS[1], 1, board.current_player)
-                        current_block.x = 100
-                        current_block.y = 750
+                    skip_action()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    block_width, block_height = get_shape_bounds(current_block.shape)
-                    rect = pygame.Rect(current_block.x, current_block.y, block_width * CELL_SIZE, block_height * CELL_SIZE)
-                    if rect.collidepoint(mouse_x, mouse_y):
-                        current_block.is_dragging = True
-                        offset_x = current_block.x - mouse_x
-                        offset_y = current_block.y - mouse_y
+                    # ボタンクリック判定
+                    clicked = False
+                    for button in buttons:
+                        if button.check_click((mouse_x, mouse_y)):
+                            clicked = True
+                            break
+                    
+                    if not clicked:
+                        # ブロックドラッグ
+                        block_width, block_height = get_shape_bounds(current_block.shape)
+                        rect = pygame.Rect(current_block.x, current_block.y, block_width * CELL_SIZE, block_height * CELL_SIZE)
+                        if rect.collidepoint(mouse_x, mouse_y):
+                            current_block.is_dragging = True
+                            offset_x = current_block.x - mouse_x
+                            offset_y = current_block.y - mouse_y
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1 and current_block.is_dragging:
                     current_block.is_dragging = False
                     if board.place_block(current_block, board.current_player):
                         board.next_player()
-                        # 次のプレーヤーの最初の使用可能ブロックに切り替え
                         for i in range(21):
                             if board.player_available_blocks[board.current_player][i]:
                                 current_block_idx = i
@@ -379,7 +412,7 @@ def main():
         preview.y = 750
         preview.draw(screen, PLAYER_COLORS[board.current_player])
 
-        # ボード上のプレビュー（置ける/置けない）
+        # ボード上のプレビュー
         if board.can_place(current_block, board.current_player):
             current_block.draw(screen, VALID_COLOR)
         else:
@@ -389,26 +422,23 @@ def main():
         draw_text(screen, "Territory Game - 4 Players", 10, 10, 32)
         draw_text(screen, f"Current: {board.get_player_name()}", 10, 50, 24, PLAYER_COLORS[board.current_player])
         
-        # プレーヤースコア
         draw_text(screen, "Scores | Available:", 10, 90, 18)
         for i in range(4):
             available = board.get_available_block_count(i)
             score_text = f"P{i + 1}: {board.player_scores[i]} | {available}/21 blocks"
             draw_text(screen, score_text, 10, 115 + i * 25, 16, PLAYER_COLORS[i])
         
-        # 状態表示
         if board.player_first_move[board.current_player]:
             status_text = "First move - touch corner"
         else:
             status_text = "Normal placement"
         draw_text(screen, status_text, 10, 220, 14)
         
-        # コントロール
-        draw_text(screen, "R: Rotate  F: Flip  SPACE: Next", 10, 245, 12)
-        draw_text(screen, "S: Skip    Drag to place", 10, 260, 12)
-        
-        # メッセージ
-        draw_text(screen, message, 10, 280, 14)
+        draw_text(screen, message, 10, 245, 14)
+
+        # ボタン描画
+        for button in buttons:
+            button.draw(screen)
 
         # ブロックパレット描画
         draw_block_palette(screen, board, board.current_player)
