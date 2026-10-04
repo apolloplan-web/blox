@@ -354,7 +354,7 @@ def draw_block_palette(screen, board, current_player_id):
 
 def draw_game_info(screen, board):
     """Draw game information panel (scores, status, etc)."""
-    draw_text(screen, "Territory Game - 4 Players", 10, 10, 32)
+    draw_text(screen, "blokus like - 4 Players", 10, 10, 32)
     draw_text(
         screen, 
         f"Current: {board.get_player_name()}", 
@@ -541,10 +541,13 @@ def main():
         preview.draw(screen, PLAYER_COLORS[board.current_player])
 
         # Draw block on board with validity feedback
-        if board.can_place(current_block, board.current_player):
-            current_block.draw(screen, VALID_COLOR)
+        if current_block.is_dragging:
+            if board.can_place(current_block, board.current_player):
+                current_block.draw(screen, VALID_COLOR)
+            else:
+                current_block.draw(screen, INVALID_COLOR)
         else:
-            current_block.draw(screen, INVALID_COLOR)
+            current_block.draw(screen, PLAYER_COLORS[board.current_player])
 
         # Draw UI panels
         draw_game_info(screen, board)
